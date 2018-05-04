@@ -2,19 +2,12 @@ import libjevois as jevois
 import cv2
 import numpy as np
 from process import process_image
-import struct
+import rome
 
 
-def checksum(data):
-  """ Implementation of Fletcher-16 checksum 
-    @return (lobyte,hibyte) tuple 
-  """
-  hisum = 0
-  losum = 0
-  for c in data:
-    losum = (losum + c)%256
-    hisum = (losum + hisum)%256
-  return losum + (hisum<<8)
+def color_to_rome_color(color):
+    return {'O': 'orange', 'G': 'green'}.get(color[0], 'none')
+
 
 class CylinderCam:
 
@@ -23,13 +16,13 @@ class CylinderCam:
 
     def processNoUSB(self, inframe):
         self.process(inframe,None)
-    
+
     def process(self, inframe, outframe):
 
         im = inframe.getCvBGR()
 
         dbg,re,rc = process_image(im)
-      
+
         # entry
         entry_area,entry_color,entry_h = re
 
@@ -39,15 +32,17 @@ class CylinderCam:
         entry_area = 0 if entry_area is None else entry_area
         cylinder_area = 0 if cylinder_area is None else cylinder_area
 
-        word = struct.pack("cccHII",
-          bytes([0x55]),
-          bytes([ord(entry_color[0])]),
-          bytes([ord(cylinder_color[0])]),
-          int(entry_h),
-          int(entry_area),
-          int(cylinder_area))
-        word += struct.pack("H",checksum(word))       
-        jevois.sendSerial(word) 
+        params = dict(
+            entry_color = color_to_rome_color(entry_color),
+            cylinder_color = color_to_rome_color(cylinder_color),
+            entry_height = int(entry_h),
+            entry_area = int(entry_area),
+            cylinder_area = int(cylinder_area),
+        )
+
+        frame = rome.Frame('jevois_tm_cylinder_color', params)
+        data = frame.data()
+        jevois.sendSerial(data)
 
         if outframe is not None:
             outframe.sendCvBGR(dbg)
