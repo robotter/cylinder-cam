@@ -40,7 +40,7 @@ class CylinderCam:
             cylinder_area = int(cylinder_area),
         )
 
-        frame = rome.Frame('jevois_tm_cylinder_color', params)
+        frame = rome.Frame('jevois_tm_cylinder_cam', **params)
         data = frame.data()
         jevois.sendSerial(data)
 
